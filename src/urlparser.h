@@ -312,7 +312,17 @@ struct parsed_url *parse_url(const char *url)
     }
 	else
 	{
-		purl->port = "80";
+		const static char *default_port = "80";
+
+		len = strlen(default_port);
+		purl->port = (char*)malloc(sizeof(char) * (len + 1));
+		if ( NULL == purl->port )
+		{
+			parsed_url_free(purl); fprintf(stderr, "Error on line %d (%s)\n", __LINE__, __FILE__);
+			return NULL;
+		}
+		(void)strncpy(purl->port, default_port, len);
+		purl->port[len] = '\0';
 	}
 	
 	/* Get ip */
