@@ -35,19 +35,22 @@
 	#include <ws2tcpip.h>
 	#include <stdio.h>
 	#pragma comment(lib, "Ws2_32.lib")
-#elif _LINUX
+#elif __linux__
 	#include <sys/socket.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
 #elif __FreeBSD__
-    #include <sys/socket.h>
-    #include <netinet/in.h>
-    #include <netdb.h>
-    #include <arpa/inet.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
 #else
 	#error Platform not suppoted.
 #endif
 
+#include <unistd.h>
 #include <errno.h>
-#include "stringx.h";
+#include "stringx.h"
 #include "urlparser.h"
 
 /*
@@ -91,6 +94,7 @@ struct http_response* handle_redirect_get(struct http_response* hresp, char* cus
 			}
 			token = strtok(NULL, "\r\n");
 		}
+		return hresp;
 	}
 	else
 	{
@@ -117,6 +121,7 @@ struct http_response* handle_redirect_head(struct http_response* hresp, char* cu
 			}
 			token = strtok(NULL, "\r\n");
 		}
+		return hresp;
 	}
 	else
 	{
@@ -143,6 +148,7 @@ struct http_response* handle_redirect_post(struct http_response* hresp, char* cu
 			}
 			token = strtok(NULL, "\r\n");
 		}
+		return hresp;
 	}
 	else
 	{
@@ -166,7 +172,6 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl)
 	/* Declare variable */
 	int sock;
 	int tmpres;
-	char buf[BUFSIZ+1];
 	struct sockaddr_in *remote;
 
 	/* Allocate memeory for htmlcontent */
@@ -213,7 +218,7 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl)
 	}
 
 	/* Send headers to server */
-	int sent = 0;
+	size_t sent = 0;
 	while(sent < strlen(http_headers))
 	{
 	    tmpres = send(sock, http_headers+sent, strlen(http_headers)-sent, 0);
@@ -228,7 +233,7 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl)
 	/* Recieve into response*/
 	char *response = (char*)malloc(0);
 	char BUF[BUFSIZ];
-	size_t recived_len = 0;
+	ssize_t recived_len = 0;
 	while((recived_len = recv(sock, BUF, BUFSIZ-1, 0)) > 0)
 	{
         BUF[recived_len] = '\0';

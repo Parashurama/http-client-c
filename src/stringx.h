@@ -182,7 +182,7 @@ void decodeblock(unsigned char in[], char *clrstr)
 	out[1] = in[1] << 4 | in[2] >> 2;
 	out[2] = in[2] << 6 | in[3] >> 0;
 	out[3] = '\0';
-	strncat((char *)clrstr, (char *)out, sizeof(out));
+	strncat((char *)clrstr, (char *)out, sizeof(char *));
 }
 
 /*
@@ -233,7 +233,7 @@ void encodeblock( unsigned char in[], char b64str[], int len )
              ((in[2] & 0xc0) >> 6) ] : '=');
     out[3] = (unsigned char) (len > 2 ? b64[ in[2] & 0x3f ] : '=');
     out[4] = '\0';
-    strncat((char *)b64str, (char *)out, sizeof(out));
+    strncat((char *)b64str, (char *)out, sizeof(char *));
 }
 
 /* 
@@ -242,7 +242,6 @@ void encodeblock( unsigned char in[], char b64str[], int len )
 char* base64_encode(char *clrstr) 
 {
 	char *b64dst = (char*)malloc(strlen(clrstr) + 50);
-	char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 	unsigned char in[3];
 	int i, len = 0;
 	int j = 0;

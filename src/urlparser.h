@@ -28,6 +28,7 @@
 /*
 	Represents an url
 */
+
 struct parsed_url 
 {
 	char *uri;					/* mandatory */
@@ -66,7 +67,6 @@ void parsed_url_free(struct parsed_url *purl)
 */
 char* hostname_to_ip(char *hostname)
 {
-	char *ip = "0.0.0.0";
 	struct hostent *h;
 	if ((h=gethostbyname(hostname)) == NULL) 
 	{  
