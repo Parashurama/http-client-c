@@ -53,13 +53,16 @@
 #include "stringx.h"
 #include "urlparser.h"
 
+#define HTTP_BUFFER_SIZE 2048
+
 /*
 	Prototype functions
 */
-struct http_response* http_req(char *http_headers, struct parsed_url *purl);
-struct http_response* http_get(char *url, char *custom_headers);
-struct http_response* http_head(char *url, char *custom_headers);
-struct http_response* http_post(char *url, char *custom_headers, char *post_data);
+struct http_response* http_req(char *http_headers, struct parsed_url *purl, struct parsed_url *proxy_url);
+struct http_response* http_get(char *url, char *custom_headers, char *proxy);
+struct http_response* http_head(char *url, char *custom_headers, char *proxy);
+struct http_response* http_post(char *url, char *custom_headers, char *post_data, char *proxy);
+struct http_response* http_options(char *url, char *proxy);
 
 
 /*
@@ -68,6 +71,7 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 struct http_response
 {
 	struct parsed_url *request_uri;
+	struct parsed_url *proxy_uri;
 	char *body;
 	char *status_code;
 	int status_code_int;
@@ -79,7 +83,7 @@ struct http_response
 /*
 	Handles redirect if needed for get requests
 */
-struct http_response* handle_redirect_get(struct http_response* hresp, char* custom_headers)
+struct http_response* handle_redirect_get(struct http_response* hresp, char* custom_headers, char *proxy)
 {
 	if(hresp->status_code_int > 300 && hresp->status_code_int < 399)
 	{
@@ -90,7 +94,7 @@ struct http_response* handle_redirect_get(struct http_response* hresp, char* cus
 			{
 				/* Extract url */
 				char *location = str_replace("Location: ", "", token);
-				return http_get(location, custom_headers);
+				return http_get(location, custom_headers, proxy);
 			}
 			token = strtok(NULL, "\r\n");
 		}
@@ -106,7 +110,7 @@ struct http_response* handle_redirect_get(struct http_response* hresp, char* cus
 /*
 	Handles redirect if needed for head requests
 */
-struct http_response* handle_redirect_head(struct http_response* hresp, char* custom_headers)
+struct http_response* handle_redirect_head(struct http_response* hresp, char* custom_headers, char *proxy)
 {
 	if(hresp->status_code_int > 300 && hresp->status_code_int < 399)
 	{
@@ -117,7 +121,7 @@ struct http_response* handle_redirect_head(struct http_response* hresp, char* cu
 			{
 				/* Extract url */
 				char *location = str_replace("Location: ", "", token);
-				return http_head(location, custom_headers);
+				return http_head(location, custom_headers, proxy);
 			}
 			token = strtok(NULL, "\r\n");
 		}
@@ -133,7 +137,7 @@ struct http_response* handle_redirect_head(struct http_response* hresp, char* cu
 /*
 	Handles redirect if needed for post requests
 */
-struct http_response* handle_redirect_post(struct http_response* hresp, char* custom_headers, char *post_data)
+struct http_response* handle_redirect_post(struct http_response* hresp, char* custom_headers, char *post_data, char *proxy)
 {
 	if(hresp->status_code_int > 300 && hresp->status_code_int < 399)
 	{
@@ -144,7 +148,7 @@ struct http_response* handle_redirect_post(struct http_response* hresp, char* cu
 			{
 				/* Extract url */
 				char *location = str_replace("Location: ", "", token);
-				return http_post(location, custom_headers, post_data);
+				return http_post(location, custom_headers, post_data, proxy);
 			}
 			token = strtok(NULL, "\r\n");
 		}
@@ -160,7 +164,7 @@ struct http_response* handle_redirect_post(struct http_response* hresp, char* cu
 /*
 	Makes a HTTP request and returns the response
 */
-struct http_response* http_req(char *http_headers, struct parsed_url *purl)
+struct http_response* http_req(char *http_headers, struct parsed_url *purl, struct parsed_url *proxy_url)
 {
 	/* Parse url */
 	if(purl == NULL)
@@ -197,7 +201,7 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl)
 	/* Set remote->sin_addr.s_addr */
 	remote = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in *));
 	remote->sin_family = AF_INET;
-  	tmpres = inet_pton(AF_INET, purl->ip, (void *)(&(remote->sin_addr.s_addr)));
+	tmpres = inet_pton(AF_INET, proxy_url==NULL?purl->ip:proxy_url->ip, (void *)(&(remote->sin_addr.s_addr)));
   	if( tmpres < 0)
   	{
     	printf("Can't set remote->sin_addr.s_addr");
@@ -208,7 +212,7 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl)
 		printf("Not a valid IP");
     	return NULL;
   	}
-	remote->sin_port = htons(atoi(purl->port));
+	remote->sin_port = htons(atoi(proxy_url==NULL?purl->port:proxy_url->port));
 
 	/* Connect */
 	if(connect(sock, (struct sockaddr *)remote, sizeof(struct sockaddr)) < 0)
@@ -283,6 +287,9 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl)
 	/* Assign request url */
 	hresp->request_uri = purl;
 
+	/* Assign proxy url */
+	hresp->proxy_uri = proxy_url;
+
 	/* Parse body */
 	char *body = strstr(response, "\r\n\r\n");
 	body = str_replace("\r\n\r\n", "", body);
@@ -295,7 +302,7 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl)
 /*
 	Makes a HTTP GET request to the given url
 */
-struct http_response* http_get(char *url, char *custom_headers)
+struct http_response* http_get(char *url, char *custom_headers, char *proxy)
 {
 	/* Parse url */
 	struct parsed_url *purl = parse_url(url);
@@ -305,30 +312,69 @@ struct http_response* http_get(char *url, char *custom_headers)
 		return NULL;
 	}
 
+	struct parsed_url *proxy_url = NULL;
+	if (proxy)
+	{
+		proxy_url = parse_url(proxy);
+		if(proxy_url == NULL)
+		{
+			printf("Unable to parse proxy");
+			return NULL;
+		}
+	}
+
 	/* Declare variable */
-	char *http_headers = (char*)malloc(1024);
+	char *http_headers = (char*)malloc(HTTP_BUFFER_SIZE);
 
 	/* Build query/headers */
 	if(purl->path != NULL)
 	{
 		if(purl->query != NULL)
 		{
-			sprintf(http_headers, "GET /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->query, purl->host);
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "GET /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->query, purl->host);
+			}
+			else
+			{
+				sprintf(http_headers, "GET %s://%s/%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->path, purl->query, purl->host);
+			}
 		}
 		else
 		{
-			sprintf(http_headers, "GET /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->host);
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "GET /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->host);
+			}
+			else
+			{
+				sprintf(http_headers, "GET %s://%s/%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->path, purl->host);
+			}
 		}
 	}
 	else
 	{
 		if(purl->query != NULL)
 		{
-			sprintf(http_headers, "GET /?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->query, purl->host);
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "GET /?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->query, purl->host);
+			}
+			else
+			{
+				sprintf(http_headers, "GET %s://%s/?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->query, purl->host);
+			}
 		}
 		else
 		{
-			sprintf(http_headers, "GET / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->host);
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "GET / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->host);
+			}
+			else
+			{
+				sprintf(http_headers, "GET %s://%s/ HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->host);
+			}
 		}
 	}
 
@@ -336,7 +382,7 @@ struct http_response* http_get(char *url, char *custom_headers)
 	if(purl->username != NULL)
 	{
 		/* Format username:password pair */
-		char *upwd = (char*)malloc(1024);
+		char *upwd = (char*)malloc(HTTP_BUFFER_SIZE);
 		sprintf(upwd, "%s:%s", purl->username, purl->password);
 		upwd = (char*)realloc(upwd, strlen(upwd) + 1);
 
@@ -344,7 +390,7 @@ struct http_response* http_get(char *url, char *custom_headers)
 		char *base64 = base64_encode(upwd);
 
 		/* Form header */
-		char *auth_header = (char*)malloc(1024);
+		char *auth_header = (char*)malloc(HTTP_BUFFER_SIZE);
 		sprintf(auth_header, "Authorization: Basic %s\r\n", base64);
 		auth_header = (char*)realloc(auth_header, strlen(auth_header) + 1);
 
@@ -365,16 +411,16 @@ struct http_response* http_get(char *url, char *custom_headers)
 	http_headers = (char*)realloc(http_headers, strlen(http_headers) + 1);
 
 	/* Make request and return response */
-	struct http_response *hresp = http_req(http_headers, purl);
+	struct http_response *hresp = http_req(http_headers, purl, proxy_url);
 
 	/* Handle redirect */
-	return handle_redirect_get(hresp, custom_headers);
+	return handle_redirect_get(hresp, custom_headers, proxy);
 }
 
 /*
 	Makes a HTTP POST request to the given url
 */
-struct http_response* http_post(char *url, char *custom_headers, char *post_data)
+struct http_response* http_post(char *url, char *custom_headers, char *post_data, char *proxy)
 {
 	/* Parse url */
 	struct parsed_url *purl = parse_url(url);
@@ -384,30 +430,69 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 		return NULL;
 	}
 
+	struct parsed_url *proxy_url = NULL;
+	if (proxy)
+	{
+		proxy_url = parse_url(proxy);
+		if(proxy_url == NULL)
+		{
+			printf("Unable to parse proxy");
+			return NULL;
+		}
+	}
+
 	/* Declare variable */
-	char *http_headers = (char*)malloc(1024);
+	char *http_headers = (char*)malloc(HTTP_BUFFER_SIZE);
 
 	/* Build query/headers */
 	if(purl->path != NULL)
 	{
 		if(purl->query != NULL)
 		{
-			sprintf(http_headers, "POST /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->path, purl->query, purl->host, strlen(post_data));
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "POST /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->path, purl->query, purl->host, strlen(post_data));
+			}
+			else
+			{
+				sprintf(http_headers, "POST %s://%s/%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->scheme, purl->host, purl->path, purl->query, purl->host, strlen(post_data));
+			}
 		}
 		else
 		{
-			sprintf(http_headers, "POST /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->path, purl->host, strlen(post_data));
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "POST /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->path, purl->host, strlen(post_data));
+			}
+			else
+			{
+				sprintf(http_headers, "POST %s://%s/%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->scheme, purl->host, purl->path, purl->host, strlen(post_data));
+			}
 		}
 	}
 	else
 	{
 		if(purl->query != NULL)
 		{
-			sprintf(http_headers, "POST /?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->query, purl->host, strlen(post_data));
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "POST /?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->query, purl->host, strlen(post_data));
+			}
+			else
+			{
+				sprintf(http_headers, "POST %s://%s/?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->scheme, purl->host, purl->query, purl->host, strlen(post_data));
+			}
 		}
 		else
 		{
-			sprintf(http_headers, "POST / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->host, strlen(post_data));
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "POST / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->host, strlen(post_data));
+			}
+			else
+			{
+				sprintf(http_headers, "POST %s://%s/ HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->scheme, purl->host, purl->host, strlen(post_data));
+			}
 		}
 	}
 
@@ -415,7 +500,7 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 	if(purl->username != NULL)
 	{
 		/* Format username:password pair */
-		char *upwd = (char*)malloc(1024);
+		char *upwd = (char*)malloc(HTTP_BUFFER_SIZE);
 		sprintf(upwd, "%s:%s", purl->username, purl->password);
 		upwd = (char*)realloc(upwd, strlen(upwd) + 1);
 
@@ -423,7 +508,7 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 		char *base64 = base64_encode(upwd);
 
 		/* Form header */
-		char *auth_header = (char*)malloc(1024);
+		char *auth_header = (char*)malloc(HTTP_BUFFER_SIZE);
 		sprintf(auth_header, "Authorization: Basic %s\r\n", base64);
 		auth_header = (char*)realloc(auth_header, strlen(auth_header) + 1);
 
@@ -444,16 +529,16 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 	http_headers = (char*)realloc(http_headers, strlen(http_headers) + 1);
 
 	/* Make request and return response */
-	struct http_response *hresp = http_req(http_headers, purl);
+	struct http_response *hresp = http_req(http_headers, purl, proxy_url);
 
 	/* Handle redirect */
-	return handle_redirect_post(hresp, custom_headers, post_data);
+	return handle_redirect_post(hresp, custom_headers, post_data, proxy);
 }
 
 /*
 	Makes a HTTP HEAD request to the given url
 */
-struct http_response* http_head(char *url, char *custom_headers)
+struct http_response* http_head(char *url, char *custom_headers, char *proxy)
 {
 	/* Parse url */
 	struct parsed_url *purl = parse_url(url);
@@ -463,30 +548,69 @@ struct http_response* http_head(char *url, char *custom_headers)
 		return NULL;
 	}
 
+	struct parsed_url *proxy_url = NULL;
+	if (proxy)
+	{
+		proxy_url = parse_url(proxy);
+		if(proxy_url == NULL)
+		{
+			printf("Unable to parse proxy");
+			return NULL;
+		}
+	}
+
 	/* Declare variable */
-	char *http_headers = (char*)malloc(1024);
+	char *http_headers = (char*)malloc(HTTP_BUFFER_SIZE);
 
 	/* Build query/headers */
 	if(purl->path != NULL)
 	{
 		if(purl->query != NULL)
 		{
-			sprintf(http_headers, "HEAD /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->query, purl->host);
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "HEAD /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->query, purl->host);
+			}
+			else
+			{
+				sprintf(http_headers, "HEAD %s://%s/%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->path, purl->query, purl->host);
+			}
 		}
 		else
 		{
-			sprintf(http_headers, "HEAD /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->host);
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "HEAD /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->host);
+			}
+			else
+			{
+				sprintf(http_headers, "HEAD %s://%s/%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->path, purl->host);
+			}
 		}
 	}
 	else
 	{
 		if(purl->query != NULL)
 		{
-			sprintf(http_headers, "HEAD/?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->query, purl->host);
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "HEAD /?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->query, purl->host);
+			}
+			else
+			{
+				sprintf(http_headers, "HEAD %s://%s/?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->query, purl->host);
+			}
 		}
 		else
 		{
-			sprintf(http_headers, "HEAD / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->host);
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "HEAD / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->host);
+			}
+			else
+			{
+				sprintf(http_headers, "HEAD %s://%s/ HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->host);
+			}
 		}
 	}
 
@@ -494,7 +618,7 @@ struct http_response* http_head(char *url, char *custom_headers)
 	if(purl->username != NULL)
 	{
 		/* Format username:password pair */
-		char *upwd = (char*)malloc(1024);
+		char *upwd = (char*)malloc(HTTP_BUFFER_SIZE);
 		sprintf(upwd, "%s:%s", purl->username, purl->password);
 		upwd = (char*)realloc(upwd, strlen(upwd) + 1);
 
@@ -502,7 +626,7 @@ struct http_response* http_head(char *url, char *custom_headers)
 		char *base64 = base64_encode(upwd);
 
 		/* Form header */
-		char *auth_header = (char*)malloc(1024);
+		char *auth_header = (char*)malloc(HTTP_BUFFER_SIZE);
 		sprintf(auth_header, "Authorization: Basic %s\r\n", base64);
 		auth_header = (char*)realloc(auth_header, strlen(auth_header) + 1);
 
@@ -522,16 +646,16 @@ struct http_response* http_head(char *url, char *custom_headers)
 	http_headers = (char*)realloc(http_headers, strlen(http_headers) + 1);
 
 	/* Make request and return response */
-	struct http_response *hresp = http_req(http_headers, purl);
+	struct http_response *hresp = http_req(http_headers, purl, proxy_url);
 
 	/* Handle redirect */
-	return handle_redirect_head(hresp, custom_headers);
+	return handle_redirect_head(hresp, custom_headers, proxy);
 }
 
 /*
 	Do HTTP OPTIONs requests
 */
-struct http_response* http_options(char *url)
+struct http_response* http_options(char *url, char *proxy)
 {
 	/* Parse url */
 	struct parsed_url *purl = parse_url(url);
@@ -541,30 +665,69 @@ struct http_response* http_options(char *url)
 		return NULL;
 	}
 
+	struct parsed_url *proxy_url = NULL;
+	if (proxy)
+	{
+		proxy_url = parse_url(proxy);
+		if(proxy_url == NULL)
+		{
+			printf("Unable to parse proxy");
+			return NULL;
+		}
+	}
+
 	/* Declare variable */
-	char *http_headers = (char*)malloc(1024);
+	char *http_headers = (char*)malloc(HTTP_BUFFER_SIZE);
 
 	/* Build query/headers */
 	if(purl->path != NULL)
 	{
 		if(purl->query != NULL)
 		{
-			sprintf(http_headers, "OPTIONS /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->query, purl->host);
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "OPTIONS /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->query, purl->host);
+			}
+			else
+			{
+				sprintf(http_headers, "OPTIONS %s://%s/%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->path, purl->query, purl->host);
+			}
 		}
 		else
 		{
-			sprintf(http_headers, "OPTIONS /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->host);
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "OPTIONS /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->host);
+			}
+			else
+			{
+				sprintf(http_headers, "OPTIONS %s://%s/%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->path, purl->host);
+			}
 		}
 	}
 	else
 	{
 		if(purl->query != NULL)
 		{
-			sprintf(http_headers, "OPTIONS/?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->query, purl->host);
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "OPTIONS /?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->query, purl->host);
+			}
+			else
+			{
+				sprintf(http_headers, "OPTIONS %s://%s/?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->query, purl->host);
+			}
 		}
 		else
 		{
-			sprintf(http_headers, "OPTIONS / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->host);
+			if (proxy_url == NULL)
+			{
+				sprintf(http_headers, "OPTIONS / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->host);
+			}
+			else
+			{
+				sprintf(http_headers, "OPTIONS %s://%s/ HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->host);
+			}
 		}
 	}
 
@@ -572,7 +735,7 @@ struct http_response* http_options(char *url)
 	if(purl->username != NULL)
 	{
 		/* Format username:password pair */
-		char *upwd = (char*)malloc(1024);
+		char *upwd = (char*)malloc(HTTP_BUFFER_SIZE);
 		sprintf(upwd, "%s:%s", purl->username, purl->password);
 		upwd = (char*)realloc(upwd, strlen(upwd) + 1);
 
@@ -580,7 +743,7 @@ struct http_response* http_options(char *url)
 		char *base64 = base64_encode(upwd);
 
 		/* Form header */
-		char *auth_header = (char*)malloc(1024);
+		char *auth_header = (char*)malloc(HTTP_BUFFER_SIZE);
 		sprintf(auth_header, "Authorization: Basic %s\r\n", base64);
 		auth_header = (char*)realloc(auth_header, strlen(auth_header) + 1);
 
@@ -594,7 +757,7 @@ struct http_response* http_options(char *url)
 	http_headers = (char*)realloc(http_headers, strlen(http_headers) + 1);
 
 	/* Make request and return response */
-	struct http_response *hresp = http_req(http_headers, purl);
+	struct http_response *hresp = http_req(http_headers, purl, proxy_url);
 
 	/* Handle redirect */
 	return hresp;
@@ -608,6 +771,7 @@ void http_response_free(struct http_response *hresp)
 	if(hresp != NULL)
 	{
 		if(hresp->request_uri != NULL) parsed_url_free(hresp->request_uri);
+		if(hresp->proxy_uri != NULL) parsed_url_free(hresp->proxy_uri);
 		if(hresp->body != NULL) free(hresp->body);
 		if(hresp->status_code != NULL) free(hresp->status_code);
 		if(hresp->status_text != NULL) free(hresp->status_text);
