@@ -35,17 +35,11 @@
 	#include <ws2tcpip.h>
 	#include <stdio.h>
 	#pragma comment(lib, "Ws2_32.lib")
-#elif __linux__
-	#include <sys/socket.h>
-	#include <netdb.h>
-	#include <arpa/inet.h>
-#elif __FreeBSD__
+#else
 	#include <sys/socket.h>
 	#include <netinet/in.h>
 	#include <netdb.h>
 	#include <arpa/inet.h>
-#else
-	#error Platform not suppoted.
 #endif
 
 #include <unistd.h>
