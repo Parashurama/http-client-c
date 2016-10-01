@@ -65,7 +65,7 @@ void parsed_url_free(struct parsed_url *purl)
 /*
 	Retrieves the IP adress of a hostname
 */
-char* hostname_to_ip(char *hostname)
+char *hostname_to_ip(char *hostname)
 {
 	struct hostent *h;
 	if ((h=gethostbyname(hostname)) == NULL) 

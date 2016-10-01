@@ -164,7 +164,7 @@ char *str_replace_x(char *search , char *replace , char *subject)
 /*
 	Get's all characters until '*until' has been found
 */
-char *str_get_until(char *haystack, char *until)
+char *str_get_until_x(char *haystack, char *until)
 {
 	ssize_t offset = str_index_of(haystack, until);
 	if (offset < 0)
@@ -245,7 +245,8 @@ void encodeblock( unsigned char in[], char b64str[], int len )
 */
 char* base64_encode(char *clrstr)
 {
-	char *b64dst = (char*)malloc(strlen(clrstr) + 50);
+	size_t encoded_length = strlen(clrstr) / 3 * 4 + 10;
+	char *b64dst = (char*)malloc(encoded_length);
 	unsigned char in[3];
 	int i, len = 0;
 	int j = 0;

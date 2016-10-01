@@ -77,7 +77,7 @@ struct http_response
 /*
 	Handles redirect if needed for get requests
 */
-struct http_response* handle_redirect_get(struct http_response* hresp, char* custom_headers, char *proxy)
+struct http_response *handle_redirect_get(struct http_response* hresp, char* custom_headers, char *proxy)
 {
 	if(hresp->status_code_int > 300 && hresp->status_code_int < 399)
 	{
@@ -88,7 +88,9 @@ struct http_response* handle_redirect_get(struct http_response* hresp, char* cus
 			{
 				/* Extract url */
 				char *location = str_replace_x("Location: ", "", token);
-				return http_get(location, custom_headers, proxy);
+				struct http_response *res = http_get(location, custom_headers, proxy);
+				free(location);
+				return res;
 			}
 			token = strtok(NULL, "\r\n");
 		}
@@ -115,7 +117,9 @@ struct http_response* handle_redirect_head(struct http_response* hresp, char* cu
 			{
 				/* Extract url */
 				char *location = str_replace_x("Location: ", "", token);
-				return http_head(location, custom_headers, proxy);
+				struct http_response *res = http_head(location, custom_headers, proxy);
+				free(location);
+				return res;
 			}
 			token = strtok(NULL, "\r\n");
 		}
@@ -142,7 +146,9 @@ struct http_response* handle_redirect_post(struct http_response* hresp, char* cu
 			{
 				/* Extract url */
 				char *location = str_replace_x("Location: ", "", token);
-				return http_post(location, custom_headers, post_data, proxy);
+				struct http_response *res = http_post(location, custom_headers, post_data, proxy);
+				free(location);
+				return res;
 			}
 			token = strtok(NULL, "\r\n");
 		}
@@ -230,13 +236,13 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl, stru
 
 	/* Recieve into response*/
 	char *response = (char*)malloc(0);
-	char BUF[BUFSIZ];
+	char buf[BUFSIZ];
 	ssize_t recived_len = 0;
-	while((recived_len = recv(sock, BUF, BUFSIZ-1, 0)) > 0)
+	while((recived_len = recv(sock, buf, BUFSIZ-1, 0)) > 0)
 	{
-        BUF[recived_len] = '\0';
-		response = (char*)realloc(response, strlen(response) + strlen(BUF) + 1);
-		sprintf(response, "%s%s", response, BUF);
+        buf[recived_len] = '\0';
+		response = (char*)realloc(response, strlen(response) + strlen(buf) + 1);
+		sprintf(response, "%s%s", response, buf);
 	}
 	if (recived_len < 0)
     {
@@ -261,18 +267,27 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl, stru
 	#endif
 
 	/* Parse status code and text */
-	char *status_line = str_get_until(response, "\r\n");
-	status_line = str_replace_x("HTTP/1.1 ", "", status_line);
-	char *status_code = str_ndup_x(status_line, 4);
-	status_code = str_replace_x(" ", "", status_code);
-	char *status_text = str_replace_x(status_code, "", status_line);
-	status_text = str_replace_x(" ", "", status_text);
+	char *p = NULL;
+
+	p = str_get_until_x(response, "\r\n");
+	char *status_line = str_replace_x("HTTP/1.1 ", "", p);
+	free(p);
+
+	p = str_ndup_x(status_line, 4);
+	char *status_code = str_replace_x(" ", "", p);
+	free(p);
+
+	p= str_replace_x(status_code, "", status_line);
+	char *status_text = str_replace_x(" ", "", p);
+
 	hresp->status_code = status_code;
 	hresp->status_code_int = atoi(status_code);
 	hresp->status_text = status_text;
 
+	free(status_line);
+
 	/* Parse response headers */
-	char *headers = str_get_until(response, "\r\n\r\n");
+	char *headers = str_get_until_x(response, "\r\n\r\n");
 	hresp->response_headers = headers;
 
 	/* Assign request headers */
@@ -285,8 +300,8 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl, stru
 	hresp->proxy_uri = proxy_url;
 
 	/* Parse body */
-	char *body = strstr(response, "\r\n\r\n");
-	body = str_replace_x("\r\n\r\n", "", body);
+	p = strstr(response, "\r\n\r\n");
+	char *body = str_replace_x("\r\n\r\n", "", p);
 	hresp->body = body;
 
 	/* Return response */
@@ -391,6 +406,10 @@ struct http_response* http_get(char *url, char *custom_headers, char *proxy)
 		/* Add to header */
 		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
 		sprintf(http_headers, "%s%s", http_headers, auth_header);
+
+		free(upwd);
+		free(base64);
+		free(auth_header);
 	}
 
 	/* Add custom headers, and close */
@@ -509,6 +528,10 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 		/* Add to header */
 		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
 		sprintf(http_headers, "%s%s", http_headers, auth_header);
+
+		free(upwd);
+		free(base64);
+		free(auth_header);
 	}
 
 	if(custom_headers != NULL)
@@ -627,6 +650,10 @@ struct http_response* http_head(char *url, char *custom_headers, char *proxy)
 		/* Add to header */
 		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
 		sprintf(http_headers, "%s%s", http_headers, auth_header);
+
+		free(upwd);
+		free(base64);
+		free(auth_header);
 	}
 
 	if(custom_headers != NULL)
@@ -744,6 +771,10 @@ struct http_response* http_options(char *url, char *proxy)
 		/* Add to header */
 		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
 		sprintf(http_headers, "%s%s", http_headers, auth_header);
+
+		free(upwd);
+		free(base64);
+		free(auth_header);
 	}
 
 	/* Build headers */
