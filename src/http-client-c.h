@@ -327,22 +327,22 @@ struct http_response* http_get(char *url, char *custom_headers, char *proxy)
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "GET /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->query, purl->host);
+				sprintf(http_headers, "GET /%s?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->path, purl->query, purl->host);
 			}
 			else
 			{
-				sprintf(http_headers, "GET %s://%s/%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->path, purl->query, purl->host);
+				sprintf(http_headers, "GET %s://%s/%s?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->scheme, purl->host, purl->path, purl->query, purl->host);
 			}
 		}
 		else
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "GET /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->host);
+				sprintf(http_headers, "GET /%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->path, purl->host);
 			}
 			else
 			{
-				sprintf(http_headers, "GET %s://%s/%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->path, purl->host);
+				sprintf(http_headers, "GET %s://%s/%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->scheme, purl->host, purl->path, purl->host);
 			}
 		}
 	}
@@ -352,22 +352,22 @@ struct http_response* http_get(char *url, char *custom_headers, char *proxy)
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "GET /?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->query, purl->host);
+				sprintf(http_headers, "GET /?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->query, purl->host);
 			}
 			else
 			{
-				sprintf(http_headers, "GET %s://%s/?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->query, purl->host);
+				sprintf(http_headers, "GET %s://%s/?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->scheme, purl->host, purl->query, purl->host);
 			}
 		}
 		else
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "GET / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->host);
+				sprintf(http_headers, "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->host);
 			}
 			else
 			{
-				sprintf(http_headers, "GET %s://%s/ HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->host);
+				sprintf(http_headers, "GET %s://%s/ HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->scheme, purl->host, purl->host);
 			}
 		}
 	}
@@ -445,22 +445,22 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "POST /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->path, purl->query, purl->host, strlen(post_data));
+				sprintf(http_headers, "POST /%s?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: application/x-www-form-urlencoded\r\n", purl->path, purl->query, purl->host, strlen(post_data));
 			}
 			else
 			{
-				sprintf(http_headers, "POST %s://%s/%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->scheme, purl->host, purl->path, purl->query, purl->host, strlen(post_data));
+				sprintf(http_headers, "POST %s://%s/%s?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: application/x-www-form-urlencoded\r\n", purl->scheme, purl->host, purl->path, purl->query, purl->host, strlen(post_data));
 			}
 		}
 		else
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "POST /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->path, purl->host, strlen(post_data));
+				sprintf(http_headers, "POST /%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: application/x-www-form-urlencoded\r\n", purl->path, purl->host, strlen(post_data));
 			}
 			else
 			{
-				sprintf(http_headers, "POST %s://%s/%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->scheme, purl->host, purl->path, purl->host, strlen(post_data));
+				sprintf(http_headers, "POST %s://%s/%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: application/x-www-form-urlencoded\r\n", purl->scheme, purl->host, purl->path, purl->host, strlen(post_data));
 			}
 		}
 	}
@@ -470,22 +470,22 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "POST /?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->query, purl->host, strlen(post_data));
+				sprintf(http_headers, "POST /?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: application/x-www-form-urlencoded\r\n", purl->query, purl->host, strlen(post_data));
 			}
 			else
 			{
-				sprintf(http_headers, "POST %s://%s/?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->scheme, purl->host, purl->query, purl->host, strlen(post_data));
+				sprintf(http_headers, "POST %s://%s/?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: application/x-www-form-urlencoded\r\n", purl->scheme, purl->host, purl->query, purl->host, strlen(post_data));
 			}
 		}
 		else
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "POST / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->host, strlen(post_data));
+				sprintf(http_headers, "POST / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: application/x-www-form-urlencoded\r\n", purl->host, strlen(post_data));
 			}
 			else
 			{
-				sprintf(http_headers, "POST %s://%s/ HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->scheme, purl->host, purl->host, strlen(post_data));
+				sprintf(http_headers, "POST %s://%s/ HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: application/x-www-form-urlencoded\r\n", purl->scheme, purl->host, purl->host, strlen(post_data));
 			}
 		}
 	}
@@ -563,22 +563,22 @@ struct http_response* http_head(char *url, char *custom_headers, char *proxy)
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "HEAD /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->query, purl->host);
+				sprintf(http_headers, "HEAD /%s?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->path, purl->query, purl->host);
 			}
 			else
 			{
-				sprintf(http_headers, "HEAD %s://%s/%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->path, purl->query, purl->host);
+				sprintf(http_headers, "HEAD %s://%s/%s?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->scheme, purl->host, purl->path, purl->query, purl->host);
 			}
 		}
 		else
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "HEAD /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->host);
+				sprintf(http_headers, "HEAD /%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->path, purl->host);
 			}
 			else
 			{
-				sprintf(http_headers, "HEAD %s://%s/%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->path, purl->host);
+				sprintf(http_headers, "HEAD %s://%s/%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->scheme, purl->host, purl->path, purl->host);
 			}
 		}
 	}
@@ -588,22 +588,22 @@ struct http_response* http_head(char *url, char *custom_headers, char *proxy)
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "HEAD /?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->query, purl->host);
+				sprintf(http_headers, "HEAD /?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->query, purl->host);
 			}
 			else
 			{
-				sprintf(http_headers, "HEAD %s://%s/?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->query, purl->host);
+				sprintf(http_headers, "HEAD %s://%s/?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->scheme, purl->host, purl->query, purl->host);
 			}
 		}
 		else
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "HEAD / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->host);
+				sprintf(http_headers, "HEAD / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->host);
 			}
 			else
 			{
-				sprintf(http_headers, "HEAD %s://%s/ HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->host);
+				sprintf(http_headers, "HEAD %s://%s/ HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->scheme, purl->host, purl->host);
 			}
 		}
 	}
@@ -680,22 +680,22 @@ struct http_response* http_options(char *url, char *proxy)
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "OPTIONS /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->query, purl->host);
+				sprintf(http_headers, "OPTIONS /%s?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->path, purl->query, purl->host);
 			}
 			else
 			{
-				sprintf(http_headers, "OPTIONS %s://%s/%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->path, purl->query, purl->host);
+				sprintf(http_headers, "OPTIONS %s://%s/%s?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->scheme, purl->host, purl->path, purl->query, purl->host);
 			}
 		}
 		else
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "OPTIONS /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->host);
+				sprintf(http_headers, "OPTIONS /%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->path, purl->host);
 			}
 			else
 			{
-				sprintf(http_headers, "OPTIONS %s://%s/%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->path, purl->host);
+				sprintf(http_headers, "OPTIONS %s://%s/%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->scheme, purl->host, purl->path, purl->host);
 			}
 		}
 	}
@@ -705,22 +705,22 @@ struct http_response* http_options(char *url, char *proxy)
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "OPTIONS /?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->query, purl->host);
+				sprintf(http_headers, "OPTIONS /?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->query, purl->host);
 			}
 			else
 			{
-				sprintf(http_headers, "OPTIONS %s://%s/?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->query, purl->host);
+				sprintf(http_headers, "OPTIONS %s://%s/?%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->scheme, purl->host, purl->query, purl->host);
 			}
 		}
 		else
 		{
 			if (proxy_url == NULL)
 			{
-				sprintf(http_headers, "OPTIONS / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->host);
+				sprintf(http_headers, "OPTIONS / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->host);
 			}
 			else
 			{
-				sprintf(http_headers, "OPTIONS %s://%s/ HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->scheme, purl->host, purl->host);
+				sprintf(http_headers, "OPTIONS %s://%s/ HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n", purl->scheme, purl->host, purl->host);
 			}
 		}
 	}
