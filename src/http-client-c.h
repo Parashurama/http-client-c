@@ -87,7 +87,7 @@ struct http_response* handle_redirect_get(struct http_response* hresp, char* cus
 			if(str_contains(token, "Location:"))
 			{
 				/* Extract url */
-				char *location = str_replace("Location: ", "", token);
+				char *location = str_replace_x("Location: ", "", token);
 				return http_get(location, custom_headers, proxy);
 			}
 			token = strtok(NULL, "\r\n");
@@ -114,7 +114,7 @@ struct http_response* handle_redirect_head(struct http_response* hresp, char* cu
 			if(str_contains(token, "Location:"))
 			{
 				/* Extract url */
-				char *location = str_replace("Location: ", "", token);
+				char *location = str_replace_x("Location: ", "", token);
 				return http_head(location, custom_headers, proxy);
 			}
 			token = strtok(NULL, "\r\n");
@@ -141,7 +141,7 @@ struct http_response* handle_redirect_post(struct http_response* hresp, char* cu
 			if(str_contains(token, "Location:"))
 			{
 				/* Extract url */
-				char *location = str_replace("Location: ", "", token);
+				char *location = str_replace_x("Location: ", "", token);
 				return http_post(location, custom_headers, post_data, proxy);
 			}
 			token = strtok(NULL, "\r\n");
@@ -261,18 +261,18 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl, stru
 	#endif
 
 	/* Parse status code and text */
-	char *status_line = get_until(response, "\r\n");
-	status_line = str_replace("HTTP/1.1 ", "", status_line);
-	char *status_code = str_ndup(status_line, 4);
-	status_code = str_replace(" ", "", status_code);
-	char *status_text = str_replace(status_code, "", status_line);
-	status_text = str_replace(" ", "", status_text);
+	char *status_line = str_get_until(response, "\r\n");
+	status_line = str_replace_x("HTTP/1.1 ", "", status_line);
+	char *status_code = str_ndup_x(status_line, 4);
+	status_code = str_replace_x(" ", "", status_code);
+	char *status_text = str_replace_x(status_code, "", status_line);
+	status_text = str_replace_x(" ", "", status_text);
 	hresp->status_code = status_code;
 	hresp->status_code_int = atoi(status_code);
 	hresp->status_text = status_text;
 
 	/* Parse response headers */
-	char *headers = get_until(response, "\r\n\r\n");
+	char *headers = str_get_until(response, "\r\n\r\n");
 	hresp->response_headers = headers;
 
 	/* Assign request headers */
@@ -286,7 +286,7 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl, stru
 
 	/* Parse body */
 	char *body = strstr(response, "\r\n\r\n");
-	body = str_replace("\r\n\r\n", "", body);
+	body = str_replace_x("\r\n\r\n", "", body);
 	hresp->body = body;
 
 	/* Return response */
