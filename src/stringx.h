@@ -140,7 +140,8 @@ char *str_replace_x(char *search , char *replace , char *subject)
 {
 	size_t matches = 0;
 	size_t search_size = strlen(search);
-	for (char *p = strstr(subject, search); p != NULL ; p = strstr(p + search_size, search))
+	char *p = NULL;
+	for (p = strstr(subject, search); p != NULL ; p = strstr(p + search_size, search))
 	{
 		matches++;
 	}
@@ -150,13 +151,16 @@ char *str_replace_x(char *search , char *replace , char *subject)
 	new_subject[0] = '\0';
 	char *old_subject = subject;
 
-	for(char *p = strstr(subject, search) ; p != NULL ; p = strstr(p + search_size , search))
+	for(p = strstr(subject, search) ; p != NULL ; p = strstr(p + search_size , search))
 	{
-		strncpy(new_subject + strlen(new_subject) , old_subject , p - old_subject);
-		strcpy(new_subject + strlen(new_subject) , replace);
+		size_t new_subject_len = strlen(new_subject);
+		size_t copy_len = p - old_subject;
+		memcpy(new_subject + new_subject_len, old_subject , copy_len);
+		new_subject[new_subject_len + copy_len] = '\0';
+		strcat(new_subject, replace);
 		old_subject = p + search_size;
 	}
-	strcpy(new_subject + strlen(new_subject), old_subject);
+	strcat(new_subject, old_subject);
 
 	return new_subject;
 }

@@ -57,6 +57,7 @@ struct http_response* http_get(char *url, char *custom_headers, char *proxy);
 struct http_response* http_head(char *url, char *custom_headers, char *proxy);
 struct http_response* http_post(char *url, char *custom_headers, char *post_data, char *proxy);
 struct http_response* http_options(char *url, char *proxy);
+void http_response_free(struct http_response *hresp);
 
 
 /*
@@ -90,6 +91,7 @@ struct http_response *handle_redirect_get(struct http_response* hresp, char* cus
 				char *location = str_replace_x("Location: ", "", token);
 				struct http_response *res = http_get(location, custom_headers, proxy);
 				free(location);
+				http_response_free(hresp);
 				return res;
 			}
 			token = strtok(NULL, "\r\n");
@@ -119,6 +121,7 @@ struct http_response* handle_redirect_head(struct http_response* hresp, char* cu
 				char *location = str_replace_x("Location: ", "", token);
 				struct http_response *res = http_head(location, custom_headers, proxy);
 				free(location);
+				http_response_free(hresp);
 				return res;
 			}
 			token = strtok(NULL, "\r\n");
@@ -148,6 +151,7 @@ struct http_response* handle_redirect_post(struct http_response* hresp, char* cu
 				char *location = str_replace_x("Location: ", "", token);
 				struct http_response *res = http_post(location, custom_headers, post_data, proxy);
 				free(location);
+				http_response_free(hresp);
 				return res;
 			}
 			token = strtok(NULL, "\r\n");
@@ -195,6 +199,7 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl, stru
 	if((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
 	{
 	    printf("Can't create TCP socket");
+		free(hresp);
 		return NULL;
 	}
 
@@ -205,11 +210,15 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl, stru
   	if( tmpres < 0)
   	{
     	printf("Can't set remote->sin_addr.s_addr");
+		free(remote);
+		free(hresp);
     	return NULL;
   	}
 	else if(tmpres == 0)
   	{
 		printf("Not a valid IP");
+		free(remote);
+		free(hresp);
     	return NULL;
   	}
 	remote->sin_port = htons(atoi(proxy_url==NULL?purl->port:proxy_url->port));
@@ -218,6 +227,8 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl, stru
 	if(connect(sock, (struct sockaddr *)remote, sizeof(struct sockaddr)) < 0)
 	{
 	    printf("Could not connect");
+		free(remote);
+		free(hresp);
 		return NULL;
 	}
 
@@ -229,22 +240,25 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl, stru
 		if(tmpres == -1)
 		{
 			printf("Can't send headers");
+			free(remote);
+			free(hresp);
 			return NULL;
 		}
 		sent += tmpres;
 	 }
 
 	/* Recieve into response*/
-	char *response = (char*)malloc(0);
+	char *response = (char *)malloc(BUFSIZ);
+	response[0] = '\0';
 	char buf[BUFSIZ];
-	ssize_t recived_len = 0;
-	while((recived_len = recv(sock, buf, BUFSIZ-1, 0)) > 0)
+	ssize_t received_len = 0;
+	while((received_len = recv(sock, buf, BUFSIZ-1, 0)) > 0)
 	{
-        buf[recived_len] = '\0';
+        buf[received_len] = '\0';
 		response = (char*)realloc(response, strlen(response) + strlen(buf) + 1);
-		sprintf(response, "%s%s", response, buf);
+		strcat(response, buf);
 	}
-	if (recived_len < 0)
+	if (received_len < 0)
     {
 		free(http_headers);
 		#ifdef _WIN32
@@ -253,11 +267,13 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl, stru
 			close(sock);
 		#endif
         printf("Unabel to recieve");
+		free(remote);
+		free(hresp);
+		free(response);
 		return NULL;
     }
 
-	/* Reallocate response */
-	response = (char*)realloc(response, strlen(response) + 1);
+	free(remote);
 
 	/* Close socket */
 	#ifdef _WIN32
@@ -279,6 +295,7 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl, stru
 
 	p= str_replace_x(status_code, "", status_line);
 	char *status_text = str_replace_x(" ", "", p);
+	free(p);
 
 	hresp->status_code = status_code;
 	hresp->status_code_int = atoi(status_code);
@@ -303,6 +320,8 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl, stru
 	p = strstr(response, "\r\n\r\n");
 	char *body = str_replace_x("\r\n\r\n", "", p);
 	hresp->body = body;
+
+	free(response);
 
 	/* Return response */
 	return hresp;
@@ -405,7 +424,7 @@ struct http_response* http_get(char *url, char *custom_headers, char *proxy)
 
 		/* Add to header */
 		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
-		sprintf(http_headers, "%s%s", http_headers, auth_header);
+		strcat(http_headers, auth_header);
 
 		free(upwd);
 		free(base64);
@@ -415,13 +434,10 @@ struct http_response* http_get(char *url, char *custom_headers, char *proxy)
 	/* Add custom headers, and close */
 	if(custom_headers != NULL)
 	{
-		sprintf(http_headers, "%s%s\r\n", http_headers, custom_headers);
+		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(custom_headers) + 2);
+		strcat(http_headers, custom_headers);
 	}
-	else
-	{
-		sprintf(http_headers, "%s\r\n", http_headers);
-	}
-	http_headers = (char*)realloc(http_headers, strlen(http_headers) + 1);
+	strcat(http_headers, "\r\n");
 
 	/* Make request and return response */
 	struct http_response *hresp = http_req(http_headers, purl, proxy_url);
@@ -452,6 +468,11 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 			printf("Unable to parse proxy");
 			return NULL;
 		}
+	}
+
+	if (post_data == NULL)
+	{
+		post_data = "";
 	}
 
 	/* Declare variable */
@@ -527,7 +548,7 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 
 		/* Add to header */
 		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
-		sprintf(http_headers, "%s%s", http_headers, auth_header);
+		strcat(http_headers, auth_header);
 
 		free(upwd);
 		free(base64);
@@ -536,14 +557,10 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 
 	if(custom_headers != NULL)
 	{
-		sprintf(http_headers, "%s%s\r\n", http_headers, custom_headers);
-		sprintf(http_headers, "%s\r\n%s", http_headers, post_data);
+		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(custom_headers) + 2);
+		strcat(http_headers, custom_headers);
 	}
-	else
-	{
-		sprintf(http_headers, "%s\r\n%s", http_headers, post_data);
-	}
-	http_headers = (char*)realloc(http_headers, strlen(http_headers) + 1);
+	strcat(http_headers, "\r\n");
 
 	/* Make request and return response */
 	struct http_response *hresp = http_req(http_headers, purl, proxy_url);
@@ -649,22 +666,20 @@ struct http_response* http_head(char *url, char *custom_headers, char *proxy)
 
 		/* Add to header */
 		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
-		sprintf(http_headers, "%s%s", http_headers, auth_header);
+		strcat(http_headers, auth_header);
 
 		free(upwd);
 		free(base64);
 		free(auth_header);
 	}
 
+	/* Add custom headers, and close */
 	if(custom_headers != NULL)
 	{
-		sprintf(http_headers, "%s%s\r\n", http_headers, custom_headers);
+		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(custom_headers) + 2);
+		strcat(http_headers, custom_headers);
 	}
-	else
-	{
-		sprintf(http_headers, "%s\r\n", http_headers);
-	}
-	http_headers = (char*)realloc(http_headers, strlen(http_headers) + 1);
+	strcat(http_headers, "\r\n");
 
 	/* Make request and return response */
 	struct http_response *hresp = http_req(http_headers, purl, proxy_url);
@@ -770,7 +785,7 @@ struct http_response* http_options(char *url, char *proxy)
 
 		/* Add to header */
 		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
-		sprintf(http_headers, "%s%s", http_headers, auth_header);
+		strcat(http_headers, auth_header);
 
 		free(upwd);
 		free(base64);
@@ -778,8 +793,7 @@ struct http_response* http_options(char *url, char *proxy)
 	}
 
 	/* Build headers */
-	sprintf(http_headers, "%s\r\n", http_headers);
-	http_headers = (char*)realloc(http_headers, strlen(http_headers) + 1);
+	strcat(http_headers, "\r\n");
 
 	/* Make request and return response */
 	struct http_response *hresp = http_req(http_headers, purl, proxy_url);
