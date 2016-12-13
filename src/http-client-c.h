@@ -53,10 +53,10 @@
 	Prototype functions
 */
 struct http_response* http_req(char *http_headers, struct parsed_url *purl, struct parsed_url *proxy_url);
-struct http_response* http_get(char *url, char *custom_headers, char *proxy);
-struct http_response* http_head(char *url, char *custom_headers, char *proxy);
-struct http_response* http_post(char *url, char *custom_headers, char *post_data, char *proxy);
-struct http_response* http_options(char *url, char *proxy);
+struct http_response* http_get(const char *url, const char *custom_headers, const char *proxy);
+struct http_response* http_head(const char *url, const char *custom_headers, const char *proxy);
+struct http_response* http_post(const char *url, const char *custom_headers, const char *post_data, const char *proxy);
+struct http_response* http_options(const char *url, const char *proxy);
 void http_response_free(struct http_response *hresp);
 
 
@@ -78,7 +78,7 @@ struct http_response
 /*
 	Handles redirect if needed for get requests
 */
-struct http_response *handle_redirect_get(struct http_response* hresp, char* custom_headers, char *proxy)
+struct http_response *handle_redirect_get(struct http_response* hresp, const char* custom_headers, const char *proxy)
 {
 	if(hresp->status_code_int > 300 && hresp->status_code_int < 399)
 	{
@@ -108,7 +108,7 @@ struct http_response *handle_redirect_get(struct http_response* hresp, char* cus
 /*
 	Handles redirect if needed for head requests
 */
-struct http_response* handle_redirect_head(struct http_response* hresp, char* custom_headers, char *proxy)
+struct http_response* handle_redirect_head(struct http_response* hresp, const char* custom_headers, const char *proxy)
 {
 	if(hresp->status_code_int > 300 && hresp->status_code_int < 399)
 	{
@@ -138,7 +138,7 @@ struct http_response* handle_redirect_head(struct http_response* hresp, char* cu
 /*
 	Handles redirect if needed for post requests
 */
-struct http_response* handle_redirect_post(struct http_response* hresp, char* custom_headers, char *post_data, char *proxy)
+struct http_response* handle_redirect_post(struct http_response* hresp, const char* custom_headers, const char *post_data, const char *proxy)
 {
 	if(hresp->status_code_int > 300 && hresp->status_code_int < 399)
 	{
@@ -330,7 +330,7 @@ struct http_response* http_req(char *http_headers, struct parsed_url *purl, stru
 /*
 	Makes a HTTP GET request to the given url
 */
-struct http_response* http_get(char *url, char *custom_headers, char *proxy)
+struct http_response* http_get(const char *url, const char *custom_headers, const char *proxy)
 {
 	/* Parse url */
 	struct parsed_url *purl = parse_url(url);
@@ -449,7 +449,7 @@ struct http_response* http_get(char *url, char *custom_headers, char *proxy)
 /*
 	Makes a HTTP POST request to the given url
 */
-struct http_response* http_post(char *url, char *custom_headers, char *post_data, char *proxy)
+struct http_response* http_post(const char *url, const char *custom_headers, const char *post_data, const char *proxy)
 {
 	/* Parse url */
 	struct parsed_url *purl = parse_url(url);
@@ -572,7 +572,7 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 /*
 	Makes a HTTP HEAD request to the given url
 */
-struct http_response* http_head(char *url, char *custom_headers, char *proxy)
+struct http_response* http_head(const char *url, const char *custom_headers, const char *proxy)
 {
 	/* Parse url */
 	struct parsed_url *purl = parse_url(url);
@@ -691,7 +691,7 @@ struct http_response* http_head(char *url, char *custom_headers, char *proxy)
 /*
 	Do HTTP OPTIONs requests
 */
-struct http_response* http_options(char *url, char *proxy)
+struct http_response* http_options(const char *url, const char *proxy)
 {
 	/* Parse url */
 	struct parsed_url *purl = parse_url(url);

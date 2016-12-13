@@ -29,16 +29,12 @@
 #include <string.h>
 #include <stdlib.h>
 
-#ifdef __cplusplus
-	#include <locale>
-#endif
-
 /*
 	Gets the offset of one string in another string
 */
 ssize_t str_index_of(const char *haystack, char *needle)
 {
-	char *offset = strstr(haystack, needle);
+	const char *offset = strstr(haystack, needle);
 	return offset == NULL ? -1 : offset - haystack;
 }
 
