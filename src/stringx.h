@@ -192,7 +192,7 @@ void decodeblock(unsigned char in[], char *clrstr)
 /*
 	Decodes a Base64 string
 */
-char* base64_decode(char *b64src)
+char* http_base64_decode(char *b64src)
 {
 	char *clrdst = (char*)malloc( ((strlen(b64src) - 1) / 3 ) * 4 + 4 + 50);
 	char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -243,7 +243,7 @@ void encodeblock( unsigned char in[], char b64str[], int len )
 /*
 	Encodes a string with Base64
 */
-char* base64_encode(char *clrstr)
+char* http_base64_encode(char *clrstr)
 {
 	size_t encoded_length = strlen(clrstr) / 3 * 4 + 10;
 	char *b64dst = (char*)malloc(encoded_length);

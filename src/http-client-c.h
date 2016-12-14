@@ -415,7 +415,7 @@ struct http_response* http_get(const char *url, const char *custom_headers, cons
 		upwd = (char*)realloc(upwd, strlen(upwd) + 1);
 
 		/* Base64 encode */
-		char *base64 = base64_encode(upwd);
+		char *base64 = http_base64_encode(upwd);
 
 		/* Form header */
 		char *auth_header = (char*)malloc(HTTP_BUFFER_SIZE);
@@ -539,7 +539,7 @@ struct http_response* http_post(const char *url, const char *custom_headers, con
 		upwd = (char*)realloc(upwd, strlen(upwd) + 1);
 
 		/* Base64 encode */
-		char *base64 = base64_encode(upwd);
+		char *base64 = http_base64_encode(upwd);
 
 		/* Form header */
 		char *auth_header = (char*)malloc(HTTP_BUFFER_SIZE);
@@ -657,7 +657,7 @@ struct http_response* http_head(const char *url, const char *custom_headers, con
 		upwd = (char*)realloc(upwd, strlen(upwd) + 1);
 
 		/* Base64 encode */
-		char *base64 = base64_encode(upwd);
+		char *base64 = http_base64_encode(upwd);
 
 		/* Form header */
 		char *auth_header = (char*)malloc(HTTP_BUFFER_SIZE);
@@ -776,7 +776,7 @@ struct http_response* http_options(const char *url, const char *proxy)
 		upwd = (char*)realloc(upwd, strlen(upwd) + 1);
 
 		/* Base64 encode */
-		char *base64 = base64_encode(upwd);
+		char *base64 = http_base64_encode(upwd);
 
 		/* Form header */
 		char *auth_header = (char*)malloc(HTTP_BUFFER_SIZE);
