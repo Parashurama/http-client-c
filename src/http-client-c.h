@@ -434,7 +434,7 @@ struct http_response* http_get(const char *url, const char *custom_headers, cons
 	/* Add custom headers, and close */
 	if(custom_headers != NULL)
 	{
-		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(custom_headers) + 2);
+		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(custom_headers) + 3);
 		strcat(http_headers, custom_headers);
 	}
 	strcat(http_headers, "\r\n");
@@ -555,12 +555,18 @@ struct http_response* http_post(const char *url, const char *custom_headers, con
 		free(auth_header);
 	}
 
+	size_t header_len = strlen(http_headers) + strlen(post_data) + 3;
 	if(custom_headers != NULL)
 	{
-		http_headers = (char*)realloc(http_headers, strlen(http_headers) + strlen(custom_headers) + 2);
+		http_headers = (char*)realloc(http_headers, header_len + strlen(custom_headers));
 		strcat(http_headers, custom_headers);
 	}
+	else
+	{
+		http_headers = (char*)realloc(http_headers, header_len);
+	}
 	strcat(http_headers, "\r\n");
+	strcat(http_headers, post_data);
 
 	/* Make request and return response */
 	struct http_response *hresp = http_req(http_headers, purl, proxy_url);
